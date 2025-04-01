@@ -1,0 +1,109 @@
+import { deleteEvent, getEventById, updateEvent } from "@/entities/events";
+import { getSupabaseRouteHandler } from "@/shared/supabase-route";
+import { NextRequest, NextResponse } from "next/server";
+
+// GET /api/events/[id] - Get a specific event
+export async function GET(
+	request: NextRequest,
+	{ params }: { params: { id: string } }
+) {
+	try {
+		const event = await getEventById(params.id);
+		return NextResponse.json(event);
+	} catch (error) {
+		console.error(`Error fetching event with ID ${params.id}:`, error);
+		return NextResponse.json(
+			{ error: "Failed to fetch event" },
+			{ status: 500 }
+		);
+	}
+}
+
+// PATCH /api/events/[id] - Update an event
+export async function PATCH(
+	request: NextRequest,
+	{ params }: { params: { id: string } }
+) {
+	try {
+		const supabase = await getSupabaseRouteHandler();
+		const {
+			data: { session },
+		} = await supabase.auth.getSession();
+
+		if (!session) {
+			return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+		}
+
+		// Get current event to check permissions
+		const currentEvent = await getEventById(params.id);
+
+		// Check if user is the organizer or admin
+		const { data: userData } = await supabase
+			.from("users")
+			.select("role")
+			.eq("id", session.user.id)
+			.single();
+
+		if (
+			currentEvent.organizer_user_id !== session.user.id &&
+			userData?.role !== "admin"
+		) {
+			return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+		}
+
+		const updates = await request.json();
+		const updatedEvent = await updateEvent(params.id, updates);
+
+		return NextResponse.json(updatedEvent);
+	} catch (error) {
+		console.error(`Error updating event with ID ${params.id}:`, error);
+		return NextResponse.json(
+			{ error: "Failed to update event" },
+			{ status: 500 }
+		);
+	}
+}
+
+// DELETE /api/events/[id] - Delete an event
+export async function DELETE(
+	request: NextRequest,
+	{ params }: { params: { id: string } }
+) {
+	try {
+		const supabase = await getSupabaseRouteHandler();
+		const {
+			data: { session },
+		} = await supabase.auth.getSession();
+
+		if (!session) {
+			return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+		}
+
+		// Get current event to check permissions
+		const currentEvent = await getEventById(params.id);
+
+		// Check if user is the organizer or admin
+		const { data: userData } = await supabase
+			.from("users")
+			.select("role")
+			.eq("id", session.user.id)
+			.single();
+
+		if (
+			currentEvent.organizer_user_id !== session.user.id &&
+			userData?.role !== "admin"
+		) {
+			return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+		}
+
+		await deleteEvent(params.id);
+
+		return NextResponse.json({ message: "Event deleted successfully" });
+	} catch (error) {
+		console.error(`Error deleting event with ID ${params.id}:`, error);
+		return NextResponse.json(
+			{ error: "Failed to delete event" },
+			{ status: 500 }
+		);
+	}
+}

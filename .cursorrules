@@ -1,0 +1,28 @@
+## Next.js Routing: Use App Router
+
+- Use App Router instead of Pages Router
+
+## Project structure
+
+Project structure will follow Feature-Sliced Design. Read this documentation thoroughly: https://feature-sliced.design/docs
+
+/src
+/app # Global settings, routing
+/pages # Route-level pages (Home, Dashboard, About us, etc.)
+/widgets # Common UI blocks for pages (Navbar, Footer, etc.)
+/features # Feature-specific modules (Sign-up, Event management, etc.)
+/entities # Domain model-specific functionality (Data-related logic)
+/shared # Common modules (Utilities, API helpers, shared UI components)
+
+## Use TypeScript for entire Project
+
+## Component: Use ShadCN if available
+
+- All components should be made by ShadCN components
+- The command is `npx shadcn@latest add`
+- Components should be re-usable as much as possible
+
+## Supabase
+
+Always reference to its documentation: https://supabase.com/docs
+DO NOT USE @supabase/auth-helpers-nextjs. Stick with @supabase/ssr

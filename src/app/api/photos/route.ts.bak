@@ -1,0 +1,63 @@
+import { addPhoto, getPhotosByEvent } from "@/entities/photos";
+import { getSupabaseRouteHandler } from "@/shared/supabase-route";
+import { NextRequest, NextResponse } from "next/server";
+
+// GET /api/photos?eventId={eventId} - Fetch photos by event ID
+export async function GET(request: NextRequest) {
+	try {
+		const { searchParams } = new URL(request.url);
+		const eventId = searchParams.get("eventId");
+
+		if (!eventId) {
+			return NextResponse.json(
+				{ error: "Event ID is required" },
+				{ status: 400 }
+			);
+		}
+
+		const photos = await getPhotosByEvent(eventId);
+		return NextResponse.json(photos);
+	} catch (error) {
+		console.error("Error fetching photos:", error);
+		return NextResponse.json(
+			{ error: "Failed to fetch photos" },
+			{ status: 500 }
+		);
+	}
+}
+
+// POST /api/photos - Upload a new photo
+export async function POST(request: NextRequest) {
+	try {
+		const supabase = await getSupabaseRouteHandler();
+		const {
+			data: { session },
+		} = await supabase.auth.getSession();
+
+		if (!session) {
+			return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+		}
+
+		const photoData = await request.json();
+
+		// Validate required fields
+		if (!photoData.event_id || !photoData.image) {
+			return NextResponse.json(
+				{ error: "Event ID and image are required" },
+				{ status: 400 }
+			);
+		}
+
+		// Add the current user as the uploader
+		photoData.uploaded_by_user_id = session.user.id;
+
+		const newPhoto = await addPhoto(photoData);
+		return NextResponse.json(newPhoto, { status: 201 });
+	} catch (error) {
+		console.error("Error uploading photo:", error);
+		return NextResponse.json(
+			{ error: "Failed to upload photo" },
+			{ status: 500 }
+		);
+	}
+}

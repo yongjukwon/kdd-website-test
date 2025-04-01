@@ -1,0 +1,80 @@
+import { getCurrentUser, updateUser } from "@/entities/user";
+import { getSupabaseRouteHandler } from "@/shared/supabase-route";
+import { NextRequest, NextResponse } from "next/server";
+
+// GET /api/users/[id] - Get user by ID (admin only)
+export async function GET(
+	request: NextRequest,
+	{ params }: { params: { id: string } }
+) {
+	try {
+		const supabase = await getSupabaseRouteHandler();
+		const {
+			data: { session },
+		} = await supabase.auth.getSession();
+
+		if (!session) {
+			return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+		}
+
+		// Check if user is admin
+		const { data: userData } = await supabase
+			.from("users")
+			.select("role")
+			.eq("id", session.user.id)
+			.single();
+
+		if (userData?.role !== "admin") {
+			return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+		}
+
+		const user = await getCurrentUser(params.id);
+
+		return NextResponse.json(user);
+	} catch (error) {
+		console.error(`Error fetching user with ID ${params.id}:`, error);
+		return NextResponse.json(
+			{ error: "Failed to fetch user" },
+			{ status: 500 }
+		);
+	}
+}
+
+// PATCH /api/users/[id] - Update user by ID (admin only)
+export async function PATCH(
+	request: NextRequest,
+	{ params }: { params: { id: string } }
+) {
+	try {
+		const supabase = await getSupabaseRouteHandler();
+		const {
+			data: { session },
+		} = await supabase.auth.getSession();
+
+		if (!session) {
+			return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+		}
+
+		// Check if user is admin
+		const { data: userData } = await supabase
+			.from("users")
+			.select("role")
+			.eq("id", session.user.id)
+			.single();
+
+		if (userData?.role !== "admin") {
+			return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+		}
+
+		const updates = await request.json();
+		const updatedUser = await updateUser(params.id, updates);
+
+		return NextResponse.json(updatedUser);
+	} catch (error) {
+		console.error(`Error updating user with ID ${params.id}:`, error);
+		return NextResponse.json(
+			{ error: "Failed to update user" },
+			{ status: 500 }
+		);
+	}
+}
